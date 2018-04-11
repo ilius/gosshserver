@@ -21,17 +21,11 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var defaultCiphers = []string{
-	"3des-cbc",
-	"aes128-cbc",
-	"aes128-ctr",
-	"aes128-gcm@openssh.com",
-	"aes192-cbc",
-	"aes192-ctr",
-	"aes256-cbc",
-	"aes256-ctr",
-	"aes256-gcm@openssh.com",
+var DefaultCiphers = []string{
 	"chacha20-poly1305@openssh.com",
+	"aes128-ctr", "aes192-ctr", "aes256-ctr",
+	"aes128-gcm@openssh.com", "aes256-gcm@openssh.com",
+	"aes128-cbc", "aes192-cbc", "aes256-cbc", "3des-cbc",
 }
 
 func cleanCommand(cmd string) string {
@@ -177,7 +171,7 @@ func getStrippedPublicKey(key ssh.PublicKey) string {
 // Listen starts a SSH server listens on given port.
 func Listen(host string, port string, ciphers []string, privateKey string, authorizedPublicKeys map[string]bool) {
 	if ciphers == nil {
-		ciphers = defaultCiphers
+		ciphers = DefaultCiphers
 	}
 
 	config := &ssh.ServerConfig{
