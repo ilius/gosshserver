@@ -79,6 +79,7 @@ func handleServerConn(keyID string, chans <-chan ssh.NewChannel) {
 					cmdParts, err := shlex.Split(cmdStringFull)
 					if err != nil {
 						log.Println("SSH: Error in parsing command:", cmdStringFull)
+						return
 					}
 
 					cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
