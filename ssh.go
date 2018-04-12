@@ -153,7 +153,7 @@ func handleServerConn(keyID string, chans <-chan ssh.NewChannel) {
 func listen(config *ssh.ServerConfig, host string, port string) {
 	listener, err := net.Listen("tcp", host+":"+port)
 	if err != nil {
-		log.Fatal(4, "Fail to start SSH server: %v", err)
+		log.Fatalf("Fail to start SSH server: %v\n", err)
 	}
 	for {
 		// Once a ServerConfig has been configured, connections can be accepted.
