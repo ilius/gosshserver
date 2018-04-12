@@ -21,6 +21,9 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var ShowDebug = true
+var ShowErrors = true
+
 var DefaultCiphers = []string{
 	"chacha20-poly1305@openssh.com",
 	"aes128-ctr", "aes192-ctr", "aes256-ctr",
@@ -45,7 +48,9 @@ func handleServerConn(keyID string, chans <-chan ssh.NewChannel) {
 
 		ch, reqs, err := newChan.Accept()
 		if err != nil {
-			log.Println("Error accepting channel:", err)
+			if ShowErrors {
+				log.Println("Error accepting channel:", err)
+			}
 			continue
 		}
 
@@ -57,28 +62,38 @@ func handleServerConn(keyID string, chans <-chan ssh.NewChannel) {
 				case "env":
 					args := strings.Split(strings.Replace(payload, "\x00", "", -1), "\v")
 					if len(args) < 2 {
-						log.Printf("Warning: SSH: Invalid env arguments: %#v\n", args)
+						if ShowErrors {
+							log.Printf("Warning: SSH: Invalid env arguments: %#v\n", args)
+						}
 						continue
 					}
 					if args[0] == "" {
 						args = args[1:]
 					}
 					if len(args) != 2 {
-						log.Printf("Warning: SSH: Invalid env arguments: %#v\n", args)
+						if ShowErrors {
+							log.Printf("Warning: SSH: Invalid env arguments: %#v\n", args)
+						}
 						continue
 					}
 					args[0] = strings.TrimLeft(args[0], "\x04")
 					_, _, err := com.ExecCmdBytes("env", args[0]+"="+args[1])
 					if err != nil {
-						log.Println("env:", err)
+						if ShowErrors {
+							log.Println("env:", err)
+						}
 						return
 					}
 				case "exec":
 					cmdStringFull := strings.TrimLeft(payload, "'()")
-					fmt.Printf("SSH: Payload: cmdStringFull = %#v\n", cmdStringFull)
+					if ShowDebug {
+						fmt.Printf("SSH: Payload: cmdStringFull = %#v\n", cmdStringFull)
+					}
 					cmdParts, err := shlex.Split(cmdStringFull)
 					if err != nil {
-						log.Println("SSH: Error in parsing command:", cmdStringFull)
+						if ShowErrors {
+							log.Println("SSH: Error in parsing command:", cmdStringFull)
+						}
 						return
 					}
 
@@ -86,23 +101,31 @@ func handleServerConn(keyID string, chans <-chan ssh.NewChannel) {
 
 					stdout, err := cmd.StdoutPipe()
 					if err != nil {
-						log.Println("SSH: StdoutPipe:", err)
+						if ShowErrors {
+							log.Println("SSH: StdoutPipe:", err)
+						}
 						return
 					}
 					stderr, err := cmd.StderrPipe()
 					if err != nil {
-						log.Println("SSH: StderrPipe:", err)
+						if ShowErrors {
+							log.Println("SSH: StderrPipe:", err)
+						}
 						return
 					}
 					input, err := cmd.StdinPipe()
 					if err != nil {
-						log.Println("SSH: StdinPipe:", err)
+						if ShowErrors {
+							log.Println("SSH: StdinPipe:", err)
+						}
 						return
 					}
 
 					// FIXME: check timeout
 					if err = cmd.Start(); err != nil {
-						log.Println("SSH: Start:", err)
+						if ShowErrors {
+							log.Println("SSH: Start:", err)
+						}
 						return
 					}
 
@@ -112,7 +135,9 @@ func handleServerConn(keyID string, chans <-chan ssh.NewChannel) {
 					io.Copy(ch.Stderr(), stderr)
 
 					if err = cmd.Wait(); err != nil {
-						log.Println("SSH: Wait:", err)
+						if ShowErrors {
+							log.Println("SSH: Wait:", err)
+						}
 						return
 					}
 
@@ -143,7 +168,9 @@ func listen(config *ssh.ServerConfig, host string, port string) {
 		// otherwise one user could easily block entire loop.
 		// For example, user could be asked to trust server key fingerprint and hangs.
 		go func() {
-			fmt.Println("SSH: Handshaking for", conn.RemoteAddr())
+			if ShowDebug {
+				fmt.Println("SSH: Handshaking for", conn.RemoteAddr())
+			}
 			sConn, chans, reqs, err := ssh.NewServerConn(conn, config)
 			if err != nil {
 				if err == io.EOF {
@@ -154,7 +181,9 @@ func listen(config *ssh.ServerConfig, host string, port string) {
 				return
 			}
 
-			fmt.Printf("SSH: Connection from %s (%s)\n", sConn.RemoteAddr(), sConn.ClientVersion())
+			if ShowDebug {
+				fmt.Printf("SSH: Connection from %s (%s)\n", sConn.RemoteAddr(), sConn.ClientVersion())
+			}
 			// The incoming Request channel must be serviced.
 			go ssh.DiscardRequests(reqs)
 			go handleServerConn(sConn.Permissions.Extensions["key-id"], chans)
@@ -184,7 +213,9 @@ func Listen(host string, port string, ciphers []string, privateKey string, autho
 				log.Println("SSH: invalid public key:", getStrippedPublicKey(key))
 				return nil, os.ErrPermission
 			}
-			fmt.Println("SSH: authentication succeed")
+			if ShowDebug {
+				fmt.Println("SSH: authentication succeed")
+			}
 			return &ssh.Permissions{}, nil
 		},
 	}
